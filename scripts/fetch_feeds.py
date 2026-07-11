@@ -16,17 +16,18 @@ from datetime import datetime, timezone
 FEEDS = {
     "top": [
         ("The New York Times", "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml"),
+        ("The Washington Post", "https://feeds.washingtonpost.com/rss/national"),
         ("BBC News", "https://feeds.bbci.co.uk/news/rss.xml"),
     ],
     "tech": [
         ("NYT Technology", "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml"),
         ("The Verge", "https://www.theverge.com/rss/index.xml"),
         ("Ars Technica", "https://feeds.arstechnica.com/arstechnica/index"),
-        ("Wired", "https://www.wired.com/feed/rss"),
-        ("MIT Technology Review", "https://www.technologyreview.com/feed/"),
+        ("TechCrunch", "https://techcrunch.com/feed/"),
     ],
     "world": [
         ("NYT World", "https://rss.nytimes.com/services/xml/rss/nyt/World.xml"),
+        ("The Washington Post", "https://feeds.washingtonpost.com/rss/world"),
         ("BBC World", "https://feeds.bbci.co.uk/news/world/rss.xml"),
         ("The Guardian", "https://www.theguardian.com/world/rss"),
         ("NPR World", "https://feeds.npr.org/1004/rss.xml"),
@@ -36,18 +37,17 @@ FEEDS = {
         ("Blue Ridge Public Radio", "https://www.bpr.org/index.rss"),
         ("Mountain Xpress", "https://mountainx.com/feed/"),
         ("Asheville Watchdog", "https://avlwatchdog.org/feed/"),
-        ("Citizen Times", "https://www.citizen-times.com/rss/"),
         ("WLOS", "https://wlos.com/feed/rss2/news"),
     ],
     "travel_no": [
-        ("The Local Norway", "https://feeds.thelocal.com/rss/no"),
         ("Life in Norway", "https://www.lifeinnorway.net/feed/"),
         ("Norway Today", "https://norwaytoday.info/feed/"),
         ("Science Norway", "https://www.sciencenorway.no/rss"),
+        ("The Guardian · Norway", "https://www.theguardian.com/world/norway/rss"),
     ],
     "travel_dk": [
-        ("The Local Denmark", "https://feeds.thelocal.com/rss/dk"),
-        ("CPH Post", "https://cphpost.dk/feed/"),
+        ("The Guardian · Denmark", "https://www.theguardian.com/world/denmark/rss"),
+        ("Scandinavia Standard", "https://www.scandinaviastandard.com/feed/"),
     ],
 }
 
