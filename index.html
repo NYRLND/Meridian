@@ -321,6 +321,13 @@ document.getElementById("themeBtn").onclick = function(){
   toast("Theme: "+state.settings.themeMode);
 };
 
+/* ---------------- curated tuning (pushed by Claude after export sessions) ---------------- */
+var curated = null;
+fetch("data/curated.json?t="+Math.floor(Date.now()/3600000))
+  .then(function(r){ return r.ok ? r.json() : null; })
+  .then(function(j){ if(j){ curated = j; state.scored = {}; if(state.feed) render(); } })
+  .catch(function(){});
+
 /* ---------------- feed loading ---------------- */
 function loadFeed(showSpin){
   state.loading = true; state.loadError = null;
@@ -354,6 +361,19 @@ function scoreStory(st, ser){
     }
   }
   if(/new york times|nyt/i.test(st.s)) s += 0.3;
+  /* curated tuning file, if present */
+  if(curated){
+    var cb = curated.boosts || {};
+    for(var ck in cb){
+      if(hay.indexOf(ck.toLowerCase()) >= 0){ s += cb[ck]; if(cb[ck] > 0.8) matched.push(ck); }
+    }
+    var bl = curated.blocks || [];
+    for(var bi=0; bi<bl.length; bi++){
+      if(hay.indexOf(String(bl[bi]).toLowerCase()) >= 0) return {score:-999, matched:[], jitter:0};
+    }
+    var sb = curated.sourceBoosts || {};
+    if(sb[st.s] != null) s += sb[st.s];
+  }
   var jitter = Math.random()*2*(ser/100);
   s += jitter;
   return {score:s, matched:matched, jitter:jitter};
@@ -430,6 +450,12 @@ function setCity(name){
 }
 
 /* ---------------- learning actions ---------------- */
+function logEvent(type, st){
+  var log = sget("log", []);
+  log.unshift({e:type, h:st.h, s:st.s, t:(st.t||[]).slice(0,3), ts:Math.floor(Date.now()/1000)});
+  if(log.length > 150) log.length = 150;
+  sset("log", log);
+}
 function bump(st, delta){
   var keys = learnKeys(st);
   for(var i=0;i<keys.length;i++){
@@ -454,10 +480,11 @@ function findStory(id){
   }
   return null;
 }
-function actMore(id){ var st=findStory(id); if(!st) return; bump(st, 2); toast("Noted — more like this"); }
+function actMore(id){ var st=findStory(id); if(!st) return; bump(st, 2); logEvent("more", st); toast("Noted — more like this"); }
 function actLess(id, closeSheet){
   var st=findStory(id); if(!st) return;
   bump(st, -3);
+  logEvent("less", st);
   for(var t in state.scored){
     state.scored[t] = state.scored[t].filter(function(x){ return x.id!==id; });
   }
@@ -470,14 +497,14 @@ function actSave(id){
   var idx = -1;
   for(var i=0;i<state.saved.length;i++) if(state.saved[i].u===st.u) idx=i;
   if(idx >= 0){ state.saved.splice(idx,1); toast("Removed from Saved"); }
-  else { state.saved.unshift(st); bump(st, 1.5); toast("Saved for later"); }
+  else { state.saved.unshift(st); bump(st, 1.5); logEvent("save", st); toast("Saved for later"); }
   sset("saved", state.saved);
   render();
   var hb = document.getElementById("sheetSave");
   if(hb) hb.className = "hot" === "" ? "" : hb.className; /* sheet re-renders below */
   if(document.getElementById("layer").innerHTML && currentSheetId===id) openSheet(id);
 }
-function actRead(id){ var st=findStory(id); if(st) bump(st, 1); }
+function actRead(id){ var st=findStory(id); if(st){ bump(st, 1); logEvent("read", st); } }
 function isSaved(st){
   for(var i=0;i<state.saved.length;i++) if(state.saved[i].u===st.u) return true;
   return false;
@@ -639,7 +666,8 @@ function openSettings(){
     +     '<div class="seg">'
     +       segBtn("auto","Auto")+segBtn("light","Light")+segBtn("dark","Dark")
     +     '</div></div>'
-    +   '<button class="dangerbtn" onclick="resetLearning()">'+I.trash+' Reset what Meridian has learned</button>'
+    +   '<button class="dangerbtn" style="margin-top:26px" onclick="exportProfile()">'+I.ext+' Export taste profile for Claude</button>'
+    +   '<button class="dangerbtn" style="margin-top:10px" onclick="resetLearning()">'+I.trash+' Reset what Meridian has learned</button>'
     +   '<p class="finenote">Feeds are gathered automatically every couple of hours from NYT, BBC, The Guardian, tech outlets, Asheville locals, and Norway/Denmark English-language sources — no API costs, ever. Hearts, saves, hides, and reads shape your For You ranking; that profile lives only on this device and fades gently over time.</p>'
     +  '</div></div></div>';
 }
@@ -659,6 +687,30 @@ function setSer(v){
   state.scored = {};
   var el = document.getElementById("serVal");
   if(el) el.textContent = v;
+}
+function exportProfile(){
+  var topics = state.profile.topics, sorted = [];
+  for(var k in topics) sorted.push([k, Math.round(topics[k]*10)/10]);
+  sorted.sort(function(a,b){ return b[1]-a[1]; });
+  var payload = {
+    app: "meridian-taste-profile",
+    exported: new Date().toISOString(),
+    serendipity: state.settings.serendipity,
+    city: state.settings.city,
+    topicWeights: sorted.slice(0, 40),
+    savedStories: state.saved.slice(0, 25).map(function(s){ return {h:s.h, s:s.s}; }),
+    recentActions: sget("log", []).slice(0, 100)
+  };
+  var text = "Here is my Meridian taste profile export. Please analyze it and tune my ranking.\n\n"
+    + JSON.stringify(payload, null, 1);
+  function done(){ toast("Profile copied — paste it to Claude"); }
+  if(navigator.share){
+    navigator.share({title:"Meridian taste profile", text:text}).catch(function(){
+      if(navigator.clipboard){ navigator.clipboard.writeText(text).then(done); }
+    });
+  } else if(navigator.clipboard){
+    navigator.clipboard.writeText(text).then(done, function(){ toast("Couldn't copy — try again"); });
+  }
 }
 function resetLearning(){
   state.profile = {topics:{}, lastDecay: Date.now()};

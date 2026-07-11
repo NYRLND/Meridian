@@ -1,4 +1,4 @@
-const VERSION = "mrd-v1";
+const VERSION = "mrd-v2";
 const SHELL = [
   "./",
   "./index.html",
